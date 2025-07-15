@@ -101,6 +101,16 @@
       word-wrap: break-word;
     }
 
+    .message.sending {
+      color: #00aa55;
+      animation: blink 0.6s infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
     .typing-indicator {
       font-style: italic;
       color: #005522;
@@ -127,7 +137,11 @@
 <!-- 🔊 Background Music -->
 <audio id="bgMusic" autoplay loop muted>
   <source src="https://files.catbox.moe/1u9z12.mp3" type="audio/mp3">
-  Your browser does not support the audio element.
+</audio>
+
+<!-- 🔔 Notification Sound -->
+<audio id="notifySound">
+  <source src="https://files.catbox.moe/1sw0om.mp3" type="audio/mp3">
 </audio>
 
 <!-- 🚪 Welcome Screen -->
@@ -141,9 +155,7 @@
 
 <!-- 💬 Chat Interface -->
 <div id="chat" class="d-flex flex-column">
-  <div class="chat-header">
-    🔐 Anonymous Chat Channel
-  </div>
+  <div class="chat-header">🔐 Anonymous Chat Channel</div>
   <div class="chat-box" id="chatBox">
     <div class="typing-indicator" id="typingIndicator" style="display:none;">Someone is typing...</div>
   </div>
@@ -165,16 +177,17 @@
   const messageInput = document.getElementById("messageInput");
   const typingIndicator = document.getElementById("typingIndicator");
   const bgMusic = document.getElementById("bgMusic");
+  const notifySound = document.getElementById("notifySound");
+
+  const randomNames = ["Shadow", "Raven", "Echo", "Ghost", "Nova", "Cipher"];
+  const codename = randomNames[Math.floor(Math.random() * randomNames.length)];
 
   enterBtn.addEventListener("click", () => {
     intro.style.display = "none";
     chat.style.display = "flex";
 
-    // Try to unmute music (browser restriction workaround)
     bgMusic.muted = false;
-    bgMusic.play().catch(() => {
-      console.log("Autoplay might be blocked.");
-    });
+    bgMusic.play().catch(() => {});
 
     loadMessages();
     setInterval(loadMessages, 5000);
@@ -193,16 +206,25 @@
       const res = await fetch(API_URL);
       const data = await res.json();
 
-      chatBox.innerHTML = '<div id="typingIndicator" class="typing-indicator" style="display:none;">Someone is typing...</div>';
+      const oldLength = document.querySelectorAll(".message").length;
+
+      chatBox.querySelectorAll(".message").forEach(m => m.remove());
 
       data.forEach(msg => {
         const div = document.createElement("div");
         div.className = "message";
-        div.textContent = msg.message;
-        chatBox.appendChild(div);
+        div.textContent = `[Anon] ${msg.message}`;
+        chatBox.insertBefore(div, typingIndicator);
       });
 
-      chatBox.scrollTop = chatBox.scrollHeight;
+      const newLength = document.querySelectorAll(".message").length;
+      if (newLength > oldLength) {
+        notifySound.play().catch(() => {});
+      }
+
+      if (chatBox.scrollHeight - chatBox.scrollTop <= chatBox.clientHeight + 200) {
+        chatBox.scrollTop = chatBox.scrollHeight;
+      }
     } catch (e) {
       console.error("Failed to fetch messages.", e);
     }
@@ -213,11 +235,10 @@
     const message = messageInput.value.trim();
     if (!message) return;
 
-    const sendingMsg = document.createElement("div");
-    sendingMsg.className = "message";
-    sendingMsg.style.color = "#00aa55";
-    sendingMsg.textContent = "> Encrypting & sending...";
-    chatBox.appendChild(sendingMsg);
+    const previewMsg = document.createElement("div");
+    previewMsg.className = "message sending";
+    previewMsg.textContent = `[${codename}] ${message}`;
+    chatBox.insertBefore(previewMsg, typingIndicator);
     chatBox.scrollTop = chatBox.scrollHeight;
 
     messageInput.value = "";
@@ -230,20 +251,19 @@
         body: JSON.stringify({ message }),
       });
 
-      sendingMsg.textContent = "> ✅ Sent!";
-      sendingMsg.style.color = "#00ff88";
+      previewMsg.className = "message";
+      previewMsg.textContent = "> ✅ Sent!";
+      previewMsg.style.color = "#00ff88";
 
       setTimeout(() => {
-        if (sendingMsg && sendingMsg.parentNode) {
-          sendingMsg.remove();
-        }
+        previewMsg.remove();
+        loadMessages();
       }, 1500);
 
-      loadMessages();
-
     } catch (err) {
-      sendingMsg.textContent = "> ❌ Failed to send.";
-      sendingMsg.style.color = "#ff5555";
+      previewMsg.className = "message";
+      previewMsg.textContent = "> ❌ Failed to send.";
+      previewMsg.style.color = "#ff5555";
     }
   });
 </script>
