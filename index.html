@@ -31,7 +31,7 @@
       border: 1px solid #00ff41;
       background: transparent;
       color: #00ff41;
-      padding: 1rem 2rem;
+      padding: 0.8rem 1.5rem;
       margin-top: 1rem;
       transition: 0.3s ease;
       cursor: pointer;
@@ -134,11 +134,11 @@
       padding: 0.8rem;
       background: #111;
       text-align: center;
-      margin-top: 1rem;
       border: 1px solid #00ff41;
       border-radius: 10px;
       width: 100%;
       max-width: 400px;
+      margin-top: 1rem;
     }
 
     .report-box textarea {
@@ -163,6 +163,16 @@
     .report-box button:hover {
       background: #00ff41;
       color: black;
+    }
+
+    #nicknameInput {
+      padding: 0.5rem;
+      border: 1px solid #00ff41;
+      background: black;
+      color: #00ff41;
+      margin-top: 1rem;
+      width: 100%;
+      max-width: 300px;
     }
 
     @media (max-width: 576px) {
@@ -193,15 +203,13 @@
   <h1>█▓▒░ ANONYMOUS CHANNEL ░▒▓█</h1>
   <p>No names. No data. Only your thoughts — safely encrypted.</p>
   <p>Created by <strong>Krishna Khanal</strong></p>
-  <small class="text-success">Messages are temporary and not saved permanently.</small>
-  
-  <!-- ✅ Report Box -->
+  <input type="text" id="nicknameInput" placeholder="Enter a nickname (required)">
+  <button id="enterBtn" class="enter-btn">ENTER CHAT</button>
+
   <div class="report-box">
     <textarea id="reportMsg" placeholder="Report bug or suggestion..."></textarea>
     <button onclick="sendReport()">Submit Report</button>
   </div>
-
-  <button id="enterBtn" class="enter-btn">ENTER CHAT</button>
 </div>
 
 <!-- 💬 Chat Interface -->
@@ -214,12 +222,12 @@
     <div class="typing-indicator" id="typingIndicator" style="display:none;">Someone is typing...</div>
   </div>
   <form id="chatForm" class="chat-input">
-    <input type="text" id="messageInput" placeholder="Send an anonymous message..." required />
+    <input type="text" id="messageInput" placeholder="Type a message..." required />
     <button type="submit">SEND</button>
   </form>
 </div>
 
-<!-- 📜 Script Section -->
+<!-- 📜 Script -->
 <script>
   const API_URL = "https://chat-web-7bge.onrender.com/";
 
@@ -232,19 +240,32 @@
   const typingIndicator = document.getElementById("typingIndicator");
   const notifySound = document.getElementById("notifySound");
   const msgCounter = document.getElementById("msgCounter");
+  const nicknameInput = document.getElementById("nicknameInput");
 
-  const randomNames = ["Shadow", "Raven", "Echo", "Ghost", "Nova", "Cipher"];
-  const codename = randomNames[Math.floor(Math.random() * randomNames.length)];
-
-  let lastSentTime = 0;
+  // Load nickname from localStorage and pre-fill input if exists
+  let nickname = localStorage.getItem("nullchat_nickname") || "";
+  if (nickname) {
+    nicknameInput.value = nickname;
+  }
 
   enterBtn.addEventListener("click", () => {
+    const name = nicknameInput.value.trim();
+    if (!name) {
+      alert("Please enter a nickname first.");
+      return;
+    }
+
+    nickname = name;
+    localStorage.setItem("nullchat_nickname", nickname);
+
     intro.style.display = "none";
     chat.style.display = "flex";
 
     loadMessages();
     setInterval(loadMessages, 5000);
   });
+
+  let lastSentTime = 0;
 
   messageInput.addEventListener("input", () => {
     typingIndicator.style.display = "block";
@@ -260,26 +281,23 @@
       const data = await res.json();
 
       const oldLength = document.querySelectorAll(".message").length;
-
       chatBox.querySelectorAll(".message").forEach(m => m.remove());
 
       data.forEach(msg => {
         const div = document.createElement("div");
         div.className = "message";
-        div.textContent = `[Anon] ${msg.message}`;
+        div.textContent = msg.message;
         chatBox.insertBefore(div, typingIndicator);
       });
 
       const newLength = document.querySelectorAll(".message").length;
+      msgCounter.textContent = `Sent: ${newLength}`;
+
       if (newLength > oldLength) {
         notifySound.play().catch(() => {});
       }
 
-      msgCounter.textContent = `Sent: ${newLength}`;
-
-      if (chatBox.scrollHeight - chatBox.scrollTop <= chatBox.clientHeight + 200) {
-        chatBox.scrollTop = chatBox.scrollHeight;
-      }
+      chatBox.scrollTop = chatBox.scrollHeight;
     } catch (e) {
       console.error("Failed to fetch messages.", e);
     }
@@ -293,12 +311,13 @@
       return;
     }
 
-    const message = messageInput.value.trim();
-    if (!message) return;
+    const userMsg = messageInput.value.trim();
+    if (!userMsg) return;
 
+    const finalMessage = `[${nickname}] ${userMsg}`;
     const previewMsg = document.createElement("div");
     previewMsg.className = "message sending";
-    previewMsg.textContent = `[${codename}] ${message}`;
+    previewMsg.textContent = finalMessage;
     chatBox.insertBefore(previewMsg, typingIndicator);
     chatBox.scrollTop = chatBox.scrollHeight;
 
@@ -310,7 +329,7 @@
       await fetch(API_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message }),
+        body: JSON.stringify({ message: finalMessage }),
       });
 
       previewMsg.className = "message";
