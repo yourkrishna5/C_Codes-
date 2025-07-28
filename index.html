@@ -478,11 +478,12 @@
             botMsgDiv.remove();
           }, 5000);
         } else {
-          await fetch(API_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ message: finalMessage }),
-          });
+     const today = new Date().toISOString().split("T")[0];
+await fetch(API_URL, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ message: finalMessage, date: today }),
+});
           previewMsg.className = "message";
           previewMsg.textContent = "> ✅ Sent!";
           previewMsg.style.color = "#00ff88";
